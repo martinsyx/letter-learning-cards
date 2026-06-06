@@ -153,8 +153,21 @@ const emojiCategories: Record<string, { name: string; emojis: string[] }> = {
   },
 }
 
+const SLIDE_OUT_DURATION = 120
+const SLIDE_IN_DURATION = 180
+const SLIDE_RESET_DELAY = 20
+const SLIDE_DISTANCE_FALLBACK = 280
+const SLIDE_DISTANCE_MIN = 220
+const SLIDE_DISTANCE_MAX = 360
+const DRAG_LOCK_THRESHOLD = 10
+const DRAG_BOUNDARY_DAMPING = 0.3
+const DRAG_COMMIT_DISTANCE = 80
+const DRAG_COMMIT_VELOCITY = 0.5
+const SNAP_BACK_DURATION = 200
+
 interface PageState {
   currentPage: number
+  cardStyle: string
   isSlowMode: boolean
   customWords: Record<string, Array<{ word: string; phonetic?: string; image?: string }>>
   activeElement: string | null
@@ -179,10 +192,20 @@ export default class Index extends Component<{}, PageState> {
   audioManager: AudioManager | null = null
   touchStartX: number = 0
   touchStartY: number = 0
-  isSwiping: boolean = false
+  slideTimers: Array<ReturnType<typeof setTimeout>> = []
+  slideSequence: number = 0
+  // Drag-follow state (instance variables to avoid extra renders)
+  touchStartTime: number = 0
+  isDragging: boolean = false
+  currentDragX: number = 0
+  pendingDragX: number | null = null
+  dragFrameTimer: ReturnType<typeof setTimeout> | null = null
+  isHorizontalDrag: boolean | null = null // null = undecided, true = horizontal, false = vertical
+  isPageAnimating: boolean = false
 
   state: PageState = {
     currentPage: 0,
+    cardStyle: "",
     isSlowMode: false,
     customWords: {},
     activeElement: null,
@@ -210,9 +233,69 @@ export default class Index extends Component<{}, PageState> {
   }
 
   componentWillUnmount() {
+    this.clearSlideTimers()
+
     if (this.audioManager) {
       this.audioManager.destroy()
     }
+  }
+
+  clearSlideTimers = () => {
+    this.slideTimers.forEach((timer) => clearTimeout(timer))
+    this.slideTimers = []
+  }
+
+  clearDragFrameTimer = () => {
+    if (this.dragFrameTimer) {
+      clearTimeout(this.dragFrameTimer)
+      this.dragFrameTimer = null
+    }
+    this.pendingDragX = null
+  }
+
+  resetGestureState = () => {
+    this.isDragging = false
+    this.currentDragX = 0
+    this.isHorizontalDrag = null
+    this.clearDragFrameTimer()
+  }
+
+  getSlideDistance = () => {
+    try {
+      const { windowWidth } = Taro.getSystemInfoSync()
+      if (windowWidth) {
+        return Math.max(
+          SLIDE_DISTANCE_MIN,
+          Math.min(SLIDE_DISTANCE_MAX, Math.round(windowWidth * 0.78)),
+        )
+      }
+    } catch {
+      return SLIDE_DISTANCE_FALLBACK
+    }
+
+    return SLIDE_DISTANCE_FALLBACK
+  }
+
+  getCardTransformStyle = (translateX: number, duration = 0, opacity = 1) => (
+    `transform: translate3d(${translateX}px, 0, 0); ` +
+    `opacity: ${opacity}; ` +
+    `transition: transform ${duration}ms ease-out, opacity ${duration}ms ease-out;`
+  )
+
+  updateDragStyle = (translateX: number) => {
+    this.pendingDragX = translateX
+
+    if (this.dragFrameTimer) return
+
+    this.dragFrameTimer = setTimeout(() => {
+      const nextX = this.pendingDragX
+      this.dragFrameTimer = null
+
+      if (nextX === null) return
+
+      this.pendingDragX = null
+      this.setState({ cardStyle: this.getCardTransformStyle(nextX) })
+    }, 16)
   }
 
   loadCustomWords = async () => {
@@ -273,20 +356,63 @@ export default class Index extends Component<{}, PageState> {
     }
   }
 
+  changePage = (nextPage: number) => {
+    const { currentPage } = this.state
+    if (nextPage < 0 || nextPage >= letterData.length || nextPage === currentPage) return
+    if (this.isPageAnimating) return
+
+    this.isPageAnimating = true
+    this.clearDragFrameTimer()
+    this.clearSlideTimers()
+    const slideSequence = this.slideSequence + 1
+    this.slideSequence = slideSequence
+    const isForward = nextPage > currentPage
+    const slideDistance = this.getSlideDistance()
+    const exitOffset = isForward ? -slideDistance : slideDistance
+    const enterOffset = isForward ? slideDistance : -slideDistance
+    this.setState({
+      cardStyle: this.getCardTransformStyle(exitOffset, SLIDE_OUT_DURATION, 0),
+    })
+
+    const switchTimer = setTimeout(() => {
+      if (this.slideSequence !== slideSequence) return
+
+      this.setState({
+        currentPage: nextPage,
+        cardStyle: this.getCardTransformStyle(enterOffset, 0, 0),
+      }, () => {
+        const enterTimer = setTimeout(() => {
+          if (this.slideSequence !== slideSequence) return
+
+          this.setState({ cardStyle: this.getCardTransformStyle(0, SLIDE_IN_DURATION, 1) })
+
+          const doneTimer = setTimeout(() => {
+            if (this.slideSequence !== slideSequence) return
+
+            this.setState({
+              cardStyle: "",
+            })
+            this.resetGestureState()
+            this.isPageAnimating = false
+          }, SLIDE_IN_DURATION)
+          this.slideTimers.push(doneTimer)
+        }, SLIDE_RESET_DELAY)
+        this.slideTimers.push(enterTimer)
+      })
+    }, SLIDE_OUT_DURATION)
+    this.slideTimers.push(switchTimer)
+  }
+
   nextPage = () => {
-    if (this.state.currentPage < letterData.length - 1) {
-      this.setState({ currentPage: this.state.currentPage + 1 })
-    }
+    this.changePage(this.state.currentPage + 1)
   }
 
   prevPage = () => {
-    if (this.state.currentPage > 0) {
-      this.setState({ currentPage: this.state.currentPage - 1 })
-    }
+    this.changePage(this.state.currentPage - 1)
   }
 
   goToPage = (index: number) => {
-    this.setState({ currentPage: index })
+    this.changePage(index)
   }
 
   toggleSlowMode = () => {
@@ -294,27 +420,170 @@ export default class Index extends Component<{}, PageState> {
   }
 
   handleTouchStart = (e: any) => {
+    e.stopPropagation?.()
+    if (this.isPageAnimating) return
+
     this.touchStartX = e.touches[0].clientX
     this.touchStartY = e.touches[0].clientY
-    this.isSwiping = false
+    this.touchStartTime = Date.now()
+    this.resetGestureState()
+  }
+
+  handleTouchMove = (e: any) => {
+    e.stopPropagation?.()
+    if (this.isPageAnimating) return
+    if (this.isHorizontalDrag === false) return
+
+    const currentX = e.touches[0].clientX
+    const currentY = e.touches[0].clientY
+    const deltaX = currentX - this.touchStartX
+    const deltaY = currentY - this.touchStartY
+
+    if (this.isHorizontalDrag === null) {
+      if (Math.abs(deltaX) > DRAG_LOCK_THRESHOLD || Math.abs(deltaY) > DRAG_LOCK_THRESHOLD) {
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          this.isHorizontalDrag = true
+          this.clearSlideTimers()
+          e.preventDefault?.()
+        } else {
+          this.isHorizontalDrag = false
+          return
+        }
+      } else {
+        return
+      }
+    }
+
+    const { currentPage } = this.state
+    const isAtStart = currentPage === 0
+    const isAtEnd = currentPage === letterData.length - 1
+    let adjustedDeltaX = deltaX
+
+    if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
+      adjustedDeltaX = deltaX * DRAG_BOUNDARY_DAMPING
+    }
+
+    this.isDragging = true
+    this.currentDragX = adjustedDeltaX
+
+    e.preventDefault?.()
+    this.updateDragStyle(adjustedDeltaX)
   }
 
   handleTouchEnd = (e: any) => {
-    if (this.isSwiping) return
+    e.stopPropagation?.()
+    if (this.isPageAnimating) return
 
-    const touchEndX = e.changedTouches[0].clientX
-    const touchEndY = e.changedTouches[0].clientY
-    const deltaX = touchEndX - this.touchStartX
-    const deltaY = touchEndY - this.touchStartY
-
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-      this.isSwiping = true
-      if (deltaX < 0) {
-        this.nextPage()
-      } else {
-        this.prevPage()
+    if (!this.isDragging) {
+      if (this.isHorizontalDrag === false) {
+        this.resetGestureState()
+        return
       }
+
+      const touchEndX = e.changedTouches[0].clientX
+      const deltaX = touchEndX - this.touchStartX
+      const deltaY = (e.changedTouches[0].clientY || 0) - this.touchStartY
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        if (deltaX < 0) {
+          this.nextPage()
+        } else {
+          this.prevPage()
+        }
+      }
+      this.resetGestureState()
+      return
     }
+
+    const { currentPage } = this.state
+    const isAtStart = currentPage === 0
+    const isAtEnd = currentPage === letterData.length - 1
+    const dragX = this.currentDragX
+    const elapsed = Date.now() - this.touchStartTime
+    const velocity = Math.abs(dragX) / Math.max(elapsed, 1)
+
+    const draggingIntoBoundary = (isAtStart && dragX > 0) || (isAtEnd && dragX < 0)
+    const shouldCommit = !draggingIntoBoundary && (
+      Math.abs(dragX) > DRAG_COMMIT_DISTANCE || velocity > DRAG_COMMIT_VELOCITY
+    )
+
+    if (shouldCommit) {
+      const isForward = dragX < 0
+      const nextPage = isForward ? currentPage + 1 : currentPage - 1
+
+      if (nextPage >= 0 && nextPage < letterData.length) {
+        this.commitDragPageChange(nextPage, isForward, dragX)
+      } else {
+        this.snapBack()
+      }
+    } else {
+      this.snapBack()
+    }
+
+    this.resetGestureState()
+  }
+
+  handleTouchCancel = (e: any) => {
+    e.stopPropagation?.()
+
+    if (this.isDragging) {
+      this.snapBack()
+    }
+
+    this.resetGestureState()
+  }
+
+  snapBack = () => {
+    this.clearSlideTimers()
+    this.setState({ cardStyle: this.getCardTransformStyle(0, SNAP_BACK_DURATION) })
+
+    const timer = setTimeout(() => {
+      this.setState({ cardStyle: "" })
+    }, SNAP_BACK_DURATION)
+    this.slideTimers.push(timer)
+  }
+
+  commitDragPageChange = (nextPage: number, isForward: boolean, currentOffset: number) => {
+    this.isPageAnimating = true
+    this.clearSlideTimers()
+
+    const slideSequence = this.slideSequence + 1
+    this.slideSequence = slideSequence
+
+    const slideDistance = this.getSlideDistance()
+    const exitTarget = isForward
+      ? Math.min(-slideDistance, currentOffset - 40)
+      : Math.max(slideDistance, currentOffset + 40)
+    const remainingDistance = Math.abs(exitTarget - currentOffset)
+    const exitDuration = Math.max(80, Math.min(SLIDE_OUT_DURATION, remainingDistance * 1.2))
+
+    this.setState({ cardStyle: this.getCardTransformStyle(exitTarget, exitDuration, 0) })
+
+    const switchTimer = setTimeout(() => {
+      if (this.slideSequence !== slideSequence) return
+
+      const enterOffset = isForward ? slideDistance : -slideDistance
+      this.setState({
+        currentPage: nextPage,
+        cardStyle: this.getCardTransformStyle(enterOffset, 0, 0),
+      }, () => {
+        const enterTimer = setTimeout(() => {
+          if (this.slideSequence !== slideSequence) return
+
+          this.setState({ cardStyle: this.getCardTransformStyle(0, SLIDE_IN_DURATION, 1) })
+
+          const doneTimer = setTimeout(() => {
+            if (this.slideSequence !== slideSequence) return
+            this.setState({ cardStyle: "" })
+            this.resetGestureState()
+            this.isPageAnimating = false
+          }, SLIDE_IN_DURATION)
+          this.slideTimers.push(doneTimer)
+        }, SLIDE_RESET_DELAY)
+        this.slideTimers.push(enterTimer)
+      })
+    }, exitDuration)
+    this.slideTimers.push(switchTimer)
   }
 
   // ============ Textbook & Grade Methods ============
@@ -363,9 +632,9 @@ export default class Index extends Component<{}, PageState> {
     this.saveSelectedExtraWords(newSelectedExtraWords)
   }
 
-  findWordData = (wordText: string): { icon: string; phonetic: string } => {
-    const { selectedTextbook, currentPage, customWords } = this.state
-    const currentLetter = letterData[currentPage].letter
+  findWordData = (wordText: string, pageIndex = this.state.currentPage): { icon: string; phonetic: string } => {
+    const { selectedTextbook, customWords } = this.state
+    const currentLetter = letterData[pageIndex].letter
 
     // Search in grade data across all grades for the current textbook
     const gradeData = selectedTextbook === "沪教" ? hujiaoGradeData : oxfordGradeData
@@ -672,16 +941,102 @@ export default class Index extends Component<{}, PageState> {
     return cat.emojis
   }
 
+  renderCardContent = (pageIndex: number, paneKey: string) => {
+    const { activeElement, customWords, selectedExtraWords, cardStyle } = this.state
+    const pageData = letterData[pageIndex]
+    const pageCustomWords = customWords[pageData.letter] || []
+
+    return (
+      <View
+        key={paneKey}
+        className="card-content"
+        onTouchStart={this.handleTouchStart}
+        onTouchMove={this.handleTouchMove}
+        onTouchEnd={this.handleTouchEnd}
+        onTouchCancel={this.handleTouchCancel}
+      >
+        <View
+          className={`letter-section ${activeElement === "letter" ? "active" : ""}`}
+          style={cardStyle}
+          onClick={() => this.playAudio(pageData.letter, "letter")}
+        >
+          <Text className="letter-text">{pageData.letter}</Text>
+        </View>
+
+        <ScrollView
+          className="words-section"
+          scrollY
+          enhanced
+          bounces={false}
+          onTouchStart={this.handleTouchStart}
+          onTouchMove={this.handleTouchMove}
+          onTouchEnd={this.handleTouchEnd}
+          onTouchCancel={this.handleTouchCancel}
+        >
+          <View className="words-grid" style={cardStyle}>
+            {pageData.words.map((item, index) => (
+              <View
+                key={index}
+                className={`word-card ${activeElement === `word-${index}` ? "active" : ""}`}
+                onClick={() => this.playAudio(item.word, `word-${index}`)}
+              >
+                <Text className="word-emoji">{item.emoji}</Text>
+                <Text className="word-text">{item.word}</Text>
+                <Text className="word-phonetic">{item.phonetic}</Text>
+              </View>
+            ))}
+
+            {pageCustomWords.map((item, index) => (
+              <View
+                key={`custom-${index}`}
+                className={`word-card custom ${activeElement === `custom-${index}` ? "active" : ""}`}
+                onClick={() => this.playAudio(item.word, `custom-${index}`)}
+                onLongPress={() => this.deleteWord(pageData.letter, index)}
+              >
+                {item.image ? (
+                  item.image.startsWith('emoji:') ? (
+                    <Text className="word-emoji">{item.image.replace('emoji:', '')}</Text>
+                  ) : (
+                    <Image className="word-icon-img" src={item.image} mode="aspectFill" />
+                  )
+                ) : (
+                  <Text className="word-emoji">✨</Text>
+                )}
+                <Text className="word-text">{item.word}</Text>
+                <Text className="word-phonetic">{item.phonetic || ""}</Text>
+              </View>
+            ))}
+
+            {(selectedExtraWords[pageData.letter] || []).map((wordText, index) => {
+              const wordData = this.findWordData(wordText, pageIndex)
+              return (
+                <View
+                  key={`extra-${index}`}
+                  className={`word-card extra ${activeElement === `extra-${index}` ? "active" : ""}`}
+                  onClick={() => this.playAudio(wordText, `extra-${index}`)}
+                  onLongPress={() => this.toggleExtraWord(wordText)}
+                >
+                  <Text className="word-emoji">{wordData.icon || "📝"}</Text>
+                  <Text className="word-text">{wordText}</Text>
+                  <Text className="word-phonetic">{wordData.phonetic || ""}</Text>
+                </View>
+              )
+            })}
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
   render() {
     const {
-      currentPage, isSlowMode, activeElement, customWords, showAddModal,
+      currentPage, isSlowMode, customWords, showAddModal,
       inputWord, inputPhonetic, tempAddedWords, showImagePicker,
       selectedTextbook, selectedGrade, selectedExtraWords,
       showEmojiPicker, activeEmojiCategory, emojiSearchQuery,
     } = this.state
     const currentData = letterData[currentPage]
-    const currentCustomWords = customWords[currentData.letter] || []
-    const hasCustomWords = currentCustomWords.length > 0 || (selectedExtraWords[currentData.letter] || []).length > 0
+    const hasCustomWords = (customWords[currentData.letter] || []).length > 0 || (selectedExtraWords[currentData.letter] || []).length > 0
     const gradeWords = this.getCurrentGradeWords()
     const filteredEmojis = this.getFilteredEmojis()
     const categoryKeys = Object.keys(emojiCategories)
@@ -714,71 +1069,8 @@ export default class Index extends Component<{}, PageState> {
           </View>
         </View>
 
-        <View
-          className="main-card"
-          onTouchStart={this.handleTouchStart}
-          onTouchEnd={this.handleTouchEnd}
-        >
-          <View
-            className={`letter-section ${activeElement === "letter" ? "active" : ""}`}
-            onClick={() => this.playAudio(currentData.letter, "letter")}
-          >
-            <Text className="letter-text">{currentData.letter}</Text>
-          </View>
-
-          <ScrollView className="words-section" scrollY>
-            <View className="words-grid">
-              {currentData.words.map((item, index) => (
-                <View
-                  key={index}
-                  className={`word-card ${activeElement === `word-${index}` ? "active" : ""}`}
-                  onClick={() => this.playAudio(item.word, `word-${index}`)}
-                >
-                  <Text className="word-emoji">{item.emoji}</Text>
-                  <Text className="word-text">{item.word}</Text>
-                  <Text className="word-phonetic">{item.phonetic}</Text>
-                </View>
-              ))}
-
-              {currentCustomWords.map((item, index) => (
-                <View
-                  key={`custom-${index}`}
-                  className={`word-card custom ${activeElement === `custom-${index}` ? "active" : ""}`}
-                  onClick={() => this.playAudio(item.word, `custom-${index}`)}
-                  onLongPress={() => this.deleteWord(currentData.letter, index)}
-                >
-                  {item.image ? (
-                    item.image.startsWith('emoji:') ? (
-                      <Text className="word-emoji">{item.image.replace('emoji:', '')}</Text>
-                    ) : (
-                      <Image className="word-icon-img" src={item.image} mode="aspectFill" />
-                    )
-                  ) : (
-                    <Text className="word-emoji">✨</Text>
-                  )}
-                  <Text className="word-text">{item.word}</Text>
-                  <Text className="word-phonetic">{item.phonetic || ""}</Text>
-                </View>
-              ))}
-
-              {/* Extra words from grade selection */}
-              {(selectedExtraWords[currentData.letter] || []).map((wordText, index) => {
-                const wordData = this.findWordData(wordText)
-                return (
-                  <View
-                    key={`extra-${index}`}
-                    className={`word-card extra ${activeElement === `extra-${index}` ? "active" : ""}`}
-                    onClick={() => this.playAudio(wordText, `extra-${index}`)}
-                    onLongPress={() => this.toggleExtraWord(wordText)}
-                  >
-                    <Text className="word-emoji">{wordData.icon || "📝"}</Text>
-                    <Text className="word-text">{wordText}</Text>
-                    <Text className="word-phonetic">{wordData.phonetic || ""}</Text>
-                  </View>
-                )
-              })}
-            </View>
-          </ScrollView>
+        <View className="main-card">
+          {this.renderCardContent(currentPage, `current-${currentPage}`)}
 
           <View className="footer-row">
             <View className="page-indicator">
