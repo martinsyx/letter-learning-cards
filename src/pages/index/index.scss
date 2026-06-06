@@ -1,0 +1,1002 @@
+page {
+  background-color: #f2f2f7; // iOS System Background
+  height: 100%;
+  overflow: hidden;
+}
+
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80rpx;
+  flex-shrink: 0;
+
+  .title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1d1d1f;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 12rpx;
+    align-items: center;
+
+    .more-btn {
+      padding: 0 20rpx;
+      height: 56rpx;
+      border-radius: 28rpx;
+      background-color: #007aff;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6rpx;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+
+      &:active {
+        opacity: 0.8;
+      }
+
+      .more-icon {
+        font-size: 32rpx;
+        font-weight: 400;
+        margin-top: -4rpx;
+      }
+
+      .more-text {
+        font-size: 22rpx;
+        font-weight: 500;
+      }
+    }
+
+    .slow-mode-btn {
+      padding: 0 20rpx;
+      height: 56rpx;
+      border-radius: 28rpx;
+      background-color: #fff;
+      color: #1d1d1f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+
+      &.active {
+        background-color: #1d1d1f;
+        color: #fff;
+      }
+
+      .btn-text {
+        font-size: 22rpx;
+        font-weight: 500;
+      }
+    }
+
+    .nav-btn {
+      width: 56rpx;
+      height: 56rpx;
+      border-radius: 28rpx;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+
+      .nav-icon {
+        font-size: 28rpx;
+        color: #1d1d1f;
+      }
+
+      &.disabled {
+        opacity: 0.3;
+      }
+    }
+  }
+}
+
+.main-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-radius: 48rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  margin-top: 16rpx;
+  min-height: 0;
+  border: 1rpx solid rgba(0, 0, 0, 0.02);
+}
+
+.letter-section {
+  background-color: #ffffff;
+  height: 220rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1rpx solid #f2f2f7;
+
+  &.active {
+    background-color: #f9f9f9;
+  }
+
+  .letter-text {
+    font-size: 140rpx;
+    font-weight: 700;
+    color: #1d1d1f;
+    line-height: 1;
+    letter-spacing: -4rpx;
+  }
+}
+
+.words-section {
+  flex: 1;
+  padding: 16rpx;
+  min-height: 0;
+}
+
+.words-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24rpx;
+  padding: 8rpx 8rpx 40rpx;
+}
+
+.word-card {
+  background-color: #ffffff;
+  border-radius: 36rpx;
+  padding: 40rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  aspect-ratio: 0.95;
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  position: relative;
+  box-shadow:
+    0 4rpx 12rpx rgba(0, 0, 0, 0.03),
+    0 12rpx 24rpx rgba(0, 0, 0, 0.02);
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+
+  &.active {
+    background-color: #f5f5f7;
+    transform: scale(0.95);
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.02);
+  }
+
+  &.custom {
+    &::before {
+      content: "";
+      position: absolute;
+      top: 24rpx;
+      left: 24rpx;
+      width: 12rpx;
+      height: 12rpx;
+      background-color: #007aff;
+      border-radius: 50%;
+      opacity: 0.4;
+    }
+  }
+
+  .word-icon-img {
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 24rpx;
+    margin-bottom: 12rpx;
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+  }
+
+  .word-emoji {
+    font-size: 88rpx;
+    line-height: 1.2;
+    margin-bottom: 8rpx;
+  }
+
+  .word-text {
+    font-size: 34rpx;
+    font-weight: 700;
+    color: #1d1d1f;
+    text-align: center;
+    line-height: 1.2;
+    word-break: break-all;
+    letter-spacing: -0.5rpx;
+  }
+
+  .word-phonetic {
+    font-size: 24rpx;
+    color: #8e8e93;
+    line-height: 1.2;
+    text-align: center;
+    font-weight: 400;
+  }
+}
+
+.footer-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24rpx 16rpx;
+  flex-shrink: 0;
+
+  .page-indicator {
+    display: flex;
+    gap: 8rpx;
+  }
+
+  .indicator-dot {
+    height: 6rpx;
+    width: 6rpx;
+    border-radius: 6rpx;
+    background-color: #d2d2d7;
+
+    &.active {
+      width: 20rpx;
+      background-color: #007aff; // 修改为一致的蓝色
+    }
+  }
+}
+
+.hint-text {
+  text-align: center;
+  font-size: 20rpx;
+  color: #86868b;
+  padding-bottom: 12rpx;
+  flex-shrink: 0;
+}
+
+// 图片选择器弹窗
+.image-picker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1100;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-picker-container {
+  width: 600rpx;
+  background-color: #fff;
+  border-radius: 40rpx;
+  overflow: hidden;
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.2);
+  animation: modalPop 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+}
+
+@keyframes modalPop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.picker-header {
+  padding: 32rpx 40rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1rpx solid #f2f2f7;
+
+  .picker-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: #1d1d1f;
+  }
+
+  .picker-close {
+    font-size: 32rpx;
+    color: #8e8e93;
+    padding: 10rpx;
+  }
+}
+
+.picker-grid {
+  padding: 40rpx;
+  display: flex;
+  flex-wrap: wrap; // 允许换行
+  justify-content: center;
+  gap: 20rpx;
+  min-height: 240rpx;
+
+  .picker-item {
+    width: 160rpx;
+    height: 160rpx;
+    border-radius: 24rpx;
+    overflow: hidden;
+    background-color: #f2f2f7;
+    border: 4rpx solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:active {
+      transform: scale(0.9);
+      border-color: #007aff;
+    }
+
+    .picker-img {
+      width: 100%;
+      height: 100%;
+    }
+
+    .picker-emoji {
+      font-size: 80rpx;
+      line-height: 1;
+    }
+  }
+
+  .picker-status {
+    width: 100%;
+    text-align: center;
+    color: #8e8e93;
+    font-size: 26rpx;
+    padding: 40rpx 0;
+  }
+}
+
+// 自定义单词弹窗样式
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; // iOS 底部署弹窗风格，或者居中
+  z-index: 1000;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.modal-container {
+  width: 100%;
+  max-height: 90vh;
+  background-color: #f2f2f7; // iOS 典型的分组背景色
+  border-radius: 40rpx 40rpx 0 0; // 底部弹出式圆角
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8rpx 30rpx rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s cubic-bezier(0.3, 0, 0.1, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 40rpx;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+
+  .modal-cancel {
+    font-size: 30rpx;
+    color: #ff3b30;
+    font-weight: 400;
+  }
+
+  .modal-title {
+    font-size: 34rpx;
+    font-weight: 600;
+    color: #1d1d1f;
+  }
+
+  .modal-done {
+    font-size: 30rpx;
+    color: #007aff;
+    font-weight: 600;
+
+    &.disabled {
+      color: #aeaeb2;
+    }
+  }
+}
+
+.modal-content {
+  flex: 1;
+  padding: 40rpx;
+  overflow-y: auto;
+}
+
+.form-hint {
+  font-size: 24rpx;
+  color: #8e8e93;
+  margin-bottom: 40rpx;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1rpx;
+
+  .letter-highlight {
+    font-weight: 700;
+    color: #1d1d1f;
+  }
+}
+
+.form-section {
+  background-color: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  margin-bottom: 40rpx;
+}
+
+.form-group {
+  display: flex;
+  align-items: center;
+  padding: 0 32rpx;
+  min-height: 100rpx;
+  border-bottom: 1rpx solid #f2f2f7;
+  box-sizing: border-box;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .form-label {
+    width: 120rpx;
+    font-size: 30rpx;
+    color: #1d1d1f;
+    font-weight: 400;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+    // 确保文字垂直居中且高度一致
+    height: 100rpx;
+    line-height: 100rpx;
+  }
+
+  .form-input {
+    flex: 1;
+    height: 100rpx;
+    font-size: 30rpx;
+    color: #1d1d1f;
+    background: transparent;
+    padding: 0; // 移除默认内边距以对齐
+    margin: 0;
+    display: flex;
+    align-items: center;
+  }
+}
+
+.add-btn {
+  width: fit-content;
+  min-width: 200rpx;
+  margin: 0 auto;
+  padding: 0 40rpx;
+  height: 80rpx;
+  background-color: #fff;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+
+  &:active {
+    background-color: #f2f2f7;
+    transform: scale(0.98);
+  }
+
+  .add-btn-text {
+    font-size: 28rpx;
+    color: #007aff;
+    font-weight: 500;
+  }
+}
+
+.added-section {
+  margin-top: 40rpx;
+
+  .added-title {
+    font-size: 24rpx;
+    color: #8e8e93;
+    text-transform: uppercase;
+    letter-spacing: 1rpx;
+    margin-bottom: 16rpx;
+    padding-left: 32rpx;
+  }
+
+  .empty-text {
+    font-size: 28rpx;
+    color: #aeaeb2;
+    text-align: center;
+    padding: 60rpx 0;
+  }
+
+  .added-list {
+    background-color: #fff;
+    border-radius: 20rpx;
+    overflow: hidden;
+  }
+
+  .added-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24rpx 32rpx;
+    border-bottom: 1rpx solid #f2f2f7;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:active {
+      background-color: #f2f2f7;
+    }
+
+    .added-content {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+
+      .added-icon-box {
+        width: 88rpx;
+        height: 88rpx;
+        background-color: #f2f2f7;
+        border-radius: 20rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+
+        .added-image {
+          width: 100%;
+          height: 100%;
+        }
+
+        .added-emoji {
+          font-size: 56rpx;
+          line-height: 1;
+        }
+
+        .added-add-icon-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+
+          .added-add-icon {
+            font-size: 32rpx;
+            color: #007aff;
+            font-weight: 600;
+            margin-bottom: 4rpx;
+          }
+
+          .added-add-text {
+            font-size: 18rpx;
+            color: #007aff;
+            font-weight: 500;
+          }
+        }
+      }
+
+      .added-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4rpx;
+
+        .added-word {
+          font-size: 32rpx;
+          color: #1d1d1f;
+          font-weight: 400;
+        }
+
+        .added-phonetic {
+          font-size: 24rpx;
+          color: #8e8e93;
+        }
+      }
+    }
+
+    .remove-btn {
+      width: 44rpx;
+      height: 44rpx;
+      background-color: #ff3b30;
+      border-radius: 22rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .remove-icon {
+        font-size: 28rpx;
+        color: #fff;
+        line-height: 1;
+        margin-top: -2rpx;
+      }
+    }
+  }
+}
+
+.modal-footer {
+  display: none; // 将完成移至 Header 更加 iOS 风格
+}
+
+// ============================================================
+// Extra word cards (from grade selection)
+// ============================================================
+
+.word-card.extra {
+  &::before {
+    content: "";
+    position: absolute;
+    top: 24rpx;
+    left: 24rpx;
+    width: 12rpx;
+    height: 12rpx;
+    background-color: #34c759;
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+}
+
+// ============================================================
+// Textbook Selection - Level 1
+// ============================================================
+
+.textbook-section {
+  padding: 20rpx 0;
+}
+
+.textbook-hint {
+  display: block;
+  font-size: 26rpx;
+  color: #8e8e93;
+  margin-bottom: 32rpx;
+  text-align: center;
+}
+
+.textbook-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 40rpx 36rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+  &:active {
+    background-color: #f2f2f7;
+    transform: scale(0.98);
+  }
+
+  .textbook-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8rpx;
+
+    .textbook-name {
+      font-size: 34rpx;
+      font-weight: 600;
+      color: #1d1d1f;
+    }
+
+    .textbook-desc {
+      font-size: 24rpx;
+      color: #8e8e93;
+    }
+  }
+
+  .textbook-chevron {
+    font-size: 40rpx;
+    color: #c7c7cc;
+    font-weight: 300;
+    line-height: 1;
+  }
+}
+
+// ============================================================
+// Grade Selection - Level 2b
+// ============================================================
+
+.grade-back-btn {
+  padding: 16rpx 0 24rpx;
+
+  .grade-back-text {
+    font-size: 28rpx;
+    color: #007aff;
+    font-weight: 500;
+  }
+}
+
+.grade-tabs {
+  white-space: nowrap;
+  padding-bottom: 20rpx;
+  flex-shrink: 0;
+}
+
+.grade-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 32rpx;
+  border-radius: 32rpx;
+  background-color: #fff;
+  margin-right: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+  &:active {
+    opacity: 0.8;
+  }
+
+  .grade-tab-text {
+    font-size: 26rpx;
+    font-weight: 500;
+    color: #1d1d1f;
+  }
+
+  &.active {
+    background-color: #007aff;
+    box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+
+    .grade-tab-text {
+      color: #fff;
+    }
+  }
+}
+
+.grade-word-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #8e8e93;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+
+.grade-word-list {
+  // Container for grade words
+}
+
+.grade-word-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+
+  &:active {
+    opacity: 0.8;
+  }
+
+  &.selected {
+    background-color: #007aff;
+    box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.2);
+  }
+
+  .grade-word-content {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+
+    .grade-word-icon {
+      font-size: 48rpx;
+      line-height: 1;
+    }
+
+    .grade-word-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4rpx;
+
+      .grade-word-text {
+        font-size: 30rpx;
+        font-weight: 500;
+        color: #1d1d1f;
+
+        &.selected {
+          color: #fff;
+        }
+      }
+
+      .grade-word-phonetic {
+        font-size: 24rpx;
+        color: #8e8e93;
+
+        &.selected {
+          color: rgba(255, 255, 255, 0.75);
+        }
+      }
+    }
+  }
+
+  .grade-word-check {
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: 18rpx;
+    background-color: rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .grade-word-check-dot {
+      width: 16rpx;
+      height: 16rpx;
+      border-radius: 8rpx;
+      background-color: #fff;
+    }
+  }
+}
+
+.grade-word-empty {
+  display: block;
+  text-align: center;
+  color: #aeaeb2;
+  font-size: 28rpx;
+  padding: 80rpx 0;
+}
+
+// ============================================================
+// Emoji Picker - Inline (in modal for custom words)
+// ============================================================
+
+.add-btn-row {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20rpx;
+}
+
+.emoji-pick-btn {
+  padding: 0 32rpx;
+  height: 80rpx;
+  background-color: #f2f2f7;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+  &:active {
+    background-color: #e5e5ea;
+    transform: scale(0.98);
+  }
+
+  .emoji-pick-btn-text {
+    font-size: 26rpx;
+    color: #1d1d1f;
+    font-weight: 500;
+  }
+}
+
+.emoji-picker-inline {
+  background-color: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  margin-bottom: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.emoji-search-bar {
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f2f2f7;
+
+  .emoji-search {
+    width: 100%;
+    height: 72rpx;
+    background-color: #f2f2f7;
+    border-radius: 16rpx;
+    padding: 0 24rpx;
+    font-size: 26rpx;
+    color: #1d1d1f;
+    box-sizing: border-box;
+  }
+}
+
+.emoji-category-tabs {
+  white-space: nowrap;
+  padding: 16rpx 16rpx 12rpx;
+  border-bottom: 1rpx solid #f2f2f7;
+}
+
+.emoji-category-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10rpx 20rpx;
+  border-radius: 20rpx;
+  background-color: #f2f2f7;
+  margin-right: 8rpx;
+
+  &:active {
+    opacity: 0.8;
+  }
+
+  .emoji-category-tab-text {
+    font-size: 22rpx;
+    color: #8e8e93;
+    font-weight: 500;
+  }
+
+  &.active {
+    background-color: #007aff;
+
+    .emoji-category-tab-text {
+      color: #fff;
+    }
+  }
+}
+
+.emoji-grid-scroll {
+  max-height: 480rpx;
+}
+
+.emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16rpx;
+  gap: 8rpx;
+}
+
+.emoji-item {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+
+  &:active {
+    background-color: #f2f2f7;
+    transform: scale(0.9);
+  }
+
+  .emoji-item-text {
+    font-size: 44rpx;
+    line-height: 1;
+  }
+}
+
+.emoji-picker-footer {
+  padding: 20rpx;
+  border-top: 1rpx solid #f2f2f7;
+  text-align: center;
+
+  &:active {
+    background-color: #f9f9f9;
+  }
+
+  .emoji-picker-cancel {
+    font-size: 28rpx;
+    color: #8e8e93;
+  }
+}
