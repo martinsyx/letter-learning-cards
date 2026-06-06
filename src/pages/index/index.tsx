@@ -1047,7 +1047,7 @@ export default class Index extends Component<{}, PageState> {
           <Text className="title">ABC Learning</Text>
 
           <View className="header-actions">
-            <View className="more-btn" onClick={this.openAddModal}>
+            <View className="more-btn" hoverClass="more-btn-hover" onClick={this.openAddModal}>
               <Text className="more-icon">+</Text>
               <Text className="more-text">添加</Text>
             </View>
@@ -1073,15 +1073,26 @@ export default class Index extends Component<{}, PageState> {
           {this.renderCardContent(currentPage, `current-${currentPage}`)}
 
           <View className="footer-row">
-            <View className="page-indicator">
-              {letterData.map((_, index) => (
-                <View
-                  key={index}
-                  className={`indicator-dot ${index === currentPage ? "active" : ""}`}
-                  onClick={() => this.goToPage(index)}
-                />
-              ))}
-            </View>
+            <ScrollView
+              className="page-indicator-scroll"
+              scrollX
+              scrollWithAnimation
+              scrollIntoView={`indicator-hit-${currentPage}`}
+            >
+              <View className="page-indicator">
+                {letterData.map((_, index) => (
+                  <View
+                    key={index}
+                    id={`indicator-hit-${index}`}
+                    className="indicator-hit-area"
+                    hoverClass="indicator-hit-area-hover"
+                    onClick={() => this.goToPage(index)}
+                  >
+                    <View className={`indicator-dot ${index === currentPage ? "active" : ""}`} />
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
           <Text className="hint-text">{hasCustomWords ? "左右滑动切换 · 长按删除" : "左右滑动切换 · 点击发音"}</Text>
@@ -1105,7 +1116,7 @@ export default class Index extends Component<{}, PageState> {
                   <View className="textbook-section">
                     <Text className="textbook-hint">请选择教材版本</Text>
 
-                    <View className="textbook-item" onClick={() => this.selectTextbook("沪教")}>
+                    <View className="textbook-item" hoverClass="textbook-item-hover" onClick={() => this.selectTextbook("沪教")}>
                       <View className="textbook-info">
                         <Text className="textbook-name">沪教版</Text>
                         <Text className="textbook-desc">上海小学英语 1-6年级</Text>
@@ -1113,7 +1124,7 @@ export default class Index extends Component<{}, PageState> {
                       <Text className="textbook-chevron">›</Text>
                     </View>
 
-                    <View className="textbook-item" onClick={() => this.selectTextbook("沪教牛津")}>
+                    <View className="textbook-item" hoverClass="textbook-item-hover" onClick={() => this.selectTextbook("沪教牛津")}>
                       <View className="textbook-info">
                         <Text className="textbook-name">沪教牛津版</Text>
                         <Text className="textbook-desc">上海小学英语 1-5年级</Text>
@@ -1121,7 +1132,7 @@ export default class Index extends Component<{}, PageState> {
                       <Text className="textbook-chevron">›</Text>
                     </View>
 
-                    <View className="textbook-item" onClick={() => this.selectTextbook("自定义")}>
+                    <View className="textbook-item" hoverClass="textbook-item-hover" onClick={() => this.selectTextbook("自定义")}>
                       <View className="textbook-info">
                         <Text className="textbook-name">自定义</Text>
                         <Text className="textbook-desc">添加自己的单词</Text>
@@ -1163,10 +1174,10 @@ export default class Index extends Component<{}, PageState> {
                         </View>
 
                         <View className="add-btn-row">
-                          <View className="add-btn" onClick={this.addWordToList}>
+                          <View className="add-btn" hoverClass="add-btn-hover" onClick={this.addWordToList}>
                             <Text className="add-btn-text">加入预览列表</Text>
                           </View>
-                          <View className="emoji-pick-btn" onClick={() => this.setState({ showEmojiPicker: true })}>
+                          <View className="emoji-pick-btn" hoverClass="emoji-pick-btn-hover" onClick={() => this.setState({ showEmojiPicker: true })}>
                             <Text className="emoji-pick-btn-text">选图标</Text>
                           </View>
                         </View>
@@ -1189,6 +1200,7 @@ export default class Index extends Component<{}, PageState> {
                             <View
                               key={key}
                               className={`emoji-category-tab ${activeEmojiCategory === key && !emojiSearchQuery ? "active" : ""}`}
+                              hoverClass="emoji-category-tab-hover"
                               onClick={() => this.setState({ activeEmojiCategory: key, emojiSearchQuery: "" })}
                             >
                               <Text className="emoji-category-tab-text">
@@ -1205,6 +1217,7 @@ export default class Index extends Component<{}, PageState> {
                               <View
                                 key={`${emoji}-${idx}`}
                                 className="emoji-item"
+                                hoverClass="emoji-item-hover"
                                 onClick={() => this.selectEmoji(emoji)}
                               >
                                 <Text className="emoji-item-text">{emoji}</Text>
@@ -1213,7 +1226,7 @@ export default class Index extends Component<{}, PageState> {
                           </View>
                         </ScrollView>
 
-                        <View className="emoji-picker-footer" onClick={this.closeEmojiPicker}>
+                        <View className="emoji-picker-footer" hoverClass="emoji-picker-footer-hover" onClick={this.closeEmojiPicker}>
                           <Text className="emoji-picker-cancel">取消</Text>
                         </View>
                       </View>
@@ -1272,6 +1285,7 @@ export default class Index extends Component<{}, PageState> {
                         <View
                           key={grade}
                           className={`grade-tab ${selectedGrade === grade ? "active" : ""}`}
+                          hoverClass="grade-tab-hover"
                           onClick={() => this.selectGrade(grade)}
                         >
                           <Text className="grade-tab-text">{grade}年级</Text>
@@ -1290,6 +1304,7 @@ export default class Index extends Component<{}, PageState> {
                           <View
                             key={index}
                             className={`grade-word-item ${isSelected ? "selected" : ""}`}
+                            hoverClass="grade-word-item-hover"
                             onClick={() => this.toggleExtraWord(item.word)}
                           >
                             <View className="grade-word-content">
@@ -1334,7 +1349,7 @@ export default class Index extends Component<{}, PageState> {
                   </View>
                 ) : this.state.candidateImages.length > 0 ? (
                   this.state.candidateImages.map((url, idx) => (
-                    <View key={idx} className="picker-item" onClick={() => this.selectImage(url)}>
+                    <View key={idx} className="picker-item" hoverClass="picker-item-hover" onClick={() => this.selectImage(url)}>
                       {url.startsWith('emoji:') ? (
                         <Text className="picker-emoji">{url.replace('emoji:', '')}</Text>
                       ) : (

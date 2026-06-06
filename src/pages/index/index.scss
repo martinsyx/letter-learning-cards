@@ -44,7 +44,7 @@ page {
       gap: 6rpx;
       box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 
-      &:active {
+      &.more-btn-hover {
         opacity: 0.8;
       }
 
@@ -241,9 +241,30 @@ page {
   padding: 24rpx 16rpx;
   flex-shrink: 0;
 
+  .page-indicator-scroll {
+    width: 100%;
+    white-space: nowrap;
+  }
+
   .page-indicator {
-    display: flex;
-    gap: 8rpx;
+    min-width: 100%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .indicator-hit-area {
+    width: 48rpx;
+    height: 48rpx;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &.indicator-hit-area-hover .indicator-dot {
+      opacity: 0.7;
+      transform: scale(1.2);
+    }
   }
 
   .indicator-dot {
@@ -251,6 +272,7 @@ page {
     width: 6rpx;
     border-radius: 6rpx;
     background-color: #d2d2d7;
+    transition: all 0.2s ease;
 
     &.active {
       width: 20rpx;
@@ -344,7 +366,7 @@ page {
     align-items: center;
     justify-content: center;
 
-    &:active {
+    &.picker-item-hover {
       transform: scale(0.9);
       border-color: #007aff;
     }
@@ -519,7 +541,7 @@ page {
   justify-content: center;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
 
-  &:active {
+  &.add-btn-hover {
     background-color: #f2f2f7;
     transform: scale(0.98);
   }
@@ -565,10 +587,6 @@ page {
 
     &:last-child {
       border-bottom: none;
-    }
-
-    &:active {
-      background-color: #f2f2f7;
     }
 
     .added-content {
@@ -704,7 +722,7 @@ page {
   margin-bottom: 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 
-  &:active {
+  &.textbook-item-hover {
     background-color: #f2f2f7;
     transform: scale(0.98);
   }
@@ -764,7 +782,7 @@ page {
   margin-right: 12rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 
-  &:active {
+  &.grade-tab-hover {
     opacity: 0.8;
   }
 
@@ -806,7 +824,7 @@ page {
   margin-bottom: 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
 
-  &:active {
+  &.grade-word-item-hover {
     opacity: 0.8;
   }
 
@@ -899,7 +917,7 @@ page {
   justify-content: center;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 
-  &:active {
+  &.emoji-pick-btn-hover {
     background-color: #e5e5ea;
     transform: scale(0.98);
   }
@@ -950,7 +968,7 @@ page {
   background-color: #f2f2f7;
   margin-right: 8rpx;
 
-  &:active {
+  &.emoji-category-tab-hover {
     opacity: 0.8;
   }
 
@@ -988,7 +1006,7 @@ page {
   justify-content: center;
   border-radius: 16rpx;
 
-  &:active {
+  &.emoji-item-hover {
     background-color: #f2f2f7;
     transform: scale(0.9);
   }
@@ -1004,7 +1022,7 @@ page {
   border-top: 1rpx solid #f2f2f7;
   text-align: center;
 
-  &:active {
+  &.emoji-picker-footer-hover {
     background-color: #f9f9f9;
   }
 
