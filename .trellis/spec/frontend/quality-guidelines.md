@@ -24,7 +24,38 @@ Questions to answer:
 
 <!-- Patterns that should never be used and why -->
 
-(To be filled by the team)
+### CSS `:active` for Mini Program Tap States
+
+Do not use CSS `:active` to implement tap feedback in Taro mini program pages.
+WeChat mini program audits flag this pattern because it can trigger too easily
+and can remain visible during scroll or swipe interactions.
+
+Use the component `hoverClass` prop and a matching class selector instead.
+
+```tsx
+// Good
+<View className="add-btn" hoverClass="add-btn-hover" onClick={this.addWordToList}>
+  <Text className="add-btn-text">Add</Text>
+</View>
+```
+
+```scss
+.add-btn {
+  &.add-btn-hover {
+    background-color: #f2f2f7;
+    transform: scale(0.98);
+  }
+}
+```
+
+```scss
+// Bad
+.add-btn {
+  &:active {
+    background-color: #f2f2f7;
+  }
+}
+```
 
 ---
 
@@ -60,6 +91,38 @@ this.setState({ cardStyle })
 ```
 
 Do not duplicate a `ScrollView` subtree just to make page movement visible. In WeChat mini programs, temporarily rendering outgoing and incoming heavy panes can increase bridge sync pressure and may surface developer-tool sync errors.
+
+### Mini Program Interactive Hit Areas
+
+When a visible target is intentionally tiny, such as an indicator dot, do not
+bind `onClick` directly to that tiny visual node. Bind the event to a real
+wrapper element with an adequate response area, then render the tiny visual
+element inside it.
+
+```tsx
+// Good
+<View className="indicator-hit-area" hoverClass="indicator-hit-area-hover" onClick={this.goToPage}>
+  <View className="indicator-dot" />
+</View>
+```
+
+```scss
+.indicator-hit-area {
+  width: 48rpx;
+  height: 48rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.indicator-dot {
+  width: 6rpx;
+  height: 6rpx;
+}
+```
+
+Pseudo-elements such as `::after` are not a reliable substitute for the real
+component's response area in mini program audits.
 
 ---
 
