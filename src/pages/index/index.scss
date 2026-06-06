@@ -432,7 +432,8 @@ page {
 .modal-content {
   flex: 1;
   padding: 40rpx;
-  overflow-y: auto;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-hint {

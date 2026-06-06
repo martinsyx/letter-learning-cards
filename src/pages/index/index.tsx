@@ -807,7 +807,7 @@ export default class Index extends Component<{}, PageState> {
                 <Text className="modal-done" onClick={this.confirmAdd}>完成</Text>
               </View>
 
-              <ScrollView className="modal-content" scrollY>
+              <View className="modal-content">
                 {/* ===== Level 1: Textbook Selection ===== */}
                 {!selectedTextbook && (
                   <View className="textbook-section">
@@ -1022,7 +1022,7 @@ export default class Index extends Component<{}, PageState> {
                     </View>
                   </View>
                 )}
-              </ScrollView>
+              </View>
             </View>
           </View>
         )}
