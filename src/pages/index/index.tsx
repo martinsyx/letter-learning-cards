@@ -165,6 +165,18 @@ const DRAG_COMMIT_DISTANCE = 80
 const DRAG_COMMIT_VELOCITY = 0.5
 const SNAP_BACK_DURATION = 200
 
+type WordSource = "default" | "custom" | "extra"
+
+interface SlideshowWord {
+  key: string
+  source: WordSource
+  sourceIndex: number
+  word: string
+  phonetic: string
+  icon: string
+  image?: string
+}
+
 interface PageState {
   currentPage: number
   cardStyle: string
@@ -186,6 +198,10 @@ interface PageState {
   showEmojiPicker: boolean
   emojiSearchQuery: string
   activeEmojiCategory: string
+  showSlideshow: boolean
+  slideshowPage: number
+  slideshowWordIndex: number
+  slideshowCardStyle: string
 }
 
 export default class Index extends Component<{}, PageState> {
@@ -202,6 +218,15 @@ export default class Index extends Component<{}, PageState> {
   dragFrameTimer: ReturnType<typeof setTimeout> | null = null
   isHorizontalDrag: boolean | null = null // null = undecided, true = horizontal, false = vertical
   isPageAnimating: boolean = false
+  slideshowTouchStartX: number = 0
+  slideshowTouchStartY: number = 0
+  slideshowTouchStartTime: number = 0
+  isSlideshowDragging: boolean = false
+  slideshowDragX: number = 0
+  isSlideshowHorizontalDrag: boolean | null = null
+  isSlideshowAnimating: boolean = false
+  slideshowTimers: Array<ReturnType<typeof setTimeout>> = []
+  slideshowSequence: number = 0
 
   state: PageState = {
     currentPage: 0,
@@ -224,6 +249,10 @@ export default class Index extends Component<{}, PageState> {
     showEmojiPicker: false,
     emojiSearchQuery: "",
     activeEmojiCategory: "animals",
+    showSlideshow: false,
+    slideshowPage: 0,
+    slideshowWordIndex: 0,
+    slideshowCardStyle: "",
   }
 
   componentDidMount() {
@@ -234,6 +263,7 @@ export default class Index extends Component<{}, PageState> {
 
   componentWillUnmount() {
     this.clearSlideTimers()
+    this.clearSlideshowTimers()
 
     if (this.audioManager) {
       this.audioManager.destroy()
@@ -243,6 +273,11 @@ export default class Index extends Component<{}, PageState> {
   clearSlideTimers = () => {
     this.slideTimers.forEach((timer) => clearTimeout(timer))
     this.slideTimers = []
+  }
+
+  clearSlideshowTimers = () => {
+    this.slideshowTimers.forEach((timer) => clearTimeout(timer))
+    this.slideshowTimers = []
   }
 
   clearDragFrameTimer = () => {
@@ -258,6 +293,12 @@ export default class Index extends Component<{}, PageState> {
     this.currentDragX = 0
     this.isHorizontalDrag = null
     this.clearDragFrameTimer()
+  }
+
+  resetSlideshowGestureState = () => {
+    this.isSlideshowDragging = false
+    this.slideshowDragX = 0
+    this.isSlideshowHorizontalDrag = null
   }
 
   getSlideDistance = () => {
@@ -421,6 +462,7 @@ export default class Index extends Component<{}, PageState> {
 
   handleTouchStart = (e: any) => {
     e.stopPropagation?.()
+    if (this.state.showSlideshow) return
     if (this.isPageAnimating) return
 
     this.touchStartX = e.touches[0].clientX
@@ -431,6 +473,7 @@ export default class Index extends Component<{}, PageState> {
 
   handleTouchMove = (e: any) => {
     e.stopPropagation?.()
+    if (this.state.showSlideshow) return
     if (this.isPageAnimating) return
     if (this.isHorizontalDrag === false) return
 
@@ -472,6 +515,7 @@ export default class Index extends Component<{}, PageState> {
 
   handleTouchEnd = (e: any) => {
     e.stopPropagation?.()
+    if (this.state.showSlideshow) return
     if (this.isPageAnimating) return
 
     if (!this.isDragging) {
@@ -525,6 +569,7 @@ export default class Index extends Component<{}, PageState> {
 
   handleTouchCancel = (e: any) => {
     e.stopPropagation?.()
+    if (this.state.showSlideshow) return
 
     if (this.isDragging) {
       this.snapBack()
@@ -674,6 +719,292 @@ export default class Index extends Component<{}, PageState> {
     // Use icon lookup
     const { icon } = getIconForWord(wordText)
     return { icon, phonetic: "" }
+  }
+
+  getPageSlideshowWords = (pageIndex: number): SlideshowWord[] => {
+    const { customWords, selectedExtraWords } = this.state
+    const pageData = letterData[pageIndex]
+    if (!pageData) return []
+
+    const letter = pageData.letter
+    const defaultWords: SlideshowWord[] = pageData.words.map((item, index) => ({
+      key: `word-${index}`,
+      source: "default",
+      sourceIndex: index,
+      word: item.word,
+      phonetic: item.phonetic,
+      icon: item.emoji,
+    }))
+
+    const customWordItems: SlideshowWord[] = (customWords[letter] || []).map((item, index) => {
+      const isEmoji = item.image?.startsWith("emoji:")
+
+      return {
+        key: `custom-${index}`,
+        source: "custom",
+        sourceIndex: index,
+        word: item.word,
+        phonetic: item.phonetic || "",
+        icon: isEmoji && item.image ? item.image.replace("emoji:", "") : "✨",
+        image: item.image && !isEmoji ? item.image : undefined,
+      }
+    })
+
+    const extraWordItems: SlideshowWord[] = (selectedExtraWords[letter] || []).map((wordText, index) => {
+      const wordData = this.findWordData(wordText, pageIndex)
+
+      return {
+        key: `extra-${index}`,
+        source: "extra",
+        sourceIndex: index,
+        word: wordText,
+        phonetic: wordData.phonetic || "",
+        icon: wordData.icon || "📝",
+      }
+    })
+
+    return [...defaultWords, ...customWordItems, ...extraWordItems]
+  }
+
+  renderWordVisual = (item: SlideshowWord, imageClassName: string, emojiClassName: string) => {
+    if (item.image) {
+      return <Image className={imageClassName} src={item.image} mode="aspectFill" />
+    }
+
+    return <Text className={emojiClassName}>{item.icon}</Text>
+  }
+
+  openSlideshow = (pageIndex: number, wordIndex: number, e?: any) => {
+    e?.stopPropagation?.()
+
+    const pageWords = this.getPageSlideshowWords(pageIndex)
+    if (!pageWords[wordIndex]) return
+
+    this.clearSlideshowTimers()
+    this.slideshowSequence += 1
+    this.isSlideshowAnimating = false
+    this.resetSlideshowGestureState()
+    this.setState({
+      showSlideshow: true,
+      slideshowPage: pageIndex,
+      slideshowWordIndex: wordIndex,
+      slideshowCardStyle: "",
+    })
+  }
+
+  closeSlideshow = (e?: any) => {
+    e?.stopPropagation?.()
+
+    const { slideshowPage } = this.state
+    this.clearSlideshowTimers()
+    this.slideshowSequence += 1
+    this.isSlideshowAnimating = false
+    this.resetSlideshowGestureState()
+    this.setState({
+      showSlideshow: false,
+      currentPage: slideshowPage,
+      slideshowCardStyle: "",
+      cardStyle: "",
+    })
+  }
+
+  getSlideshowNeighbor = (
+    pageIndex: number,
+    wordIndex: number,
+    isForward: boolean,
+  ): { pageIndex: number; wordIndex: number } | null => {
+    const pageWords = this.getPageSlideshowWords(pageIndex)
+
+    if (isForward) {
+      if (wordIndex < pageWords.length - 1) {
+        return { pageIndex, wordIndex: wordIndex + 1 }
+      }
+
+      for (let nextPage = pageIndex + 1; nextPage < letterData.length; nextPage += 1) {
+        const nextWords = this.getPageSlideshowWords(nextPage)
+        if (nextWords.length > 0) {
+          return { pageIndex: nextPage, wordIndex: 0 }
+        }
+      }
+
+      return null
+    }
+
+    if (wordIndex > 0) {
+      return { pageIndex, wordIndex: wordIndex - 1 }
+    }
+
+    for (let prevPage = pageIndex - 1; prevPage >= 0; prevPage -= 1) {
+      const prevWords = this.getPageSlideshowWords(prevPage)
+      if (prevWords.length > 0) {
+        return { pageIndex: prevPage, wordIndex: prevWords.length - 1 }
+      }
+    }
+
+    return null
+  }
+
+  handleSlideshowTouchStart = (e: any) => {
+    e.stopPropagation?.()
+    if (this.isSlideshowAnimating) return
+
+    this.slideshowTouchStartX = e.touches[0].clientX
+    this.slideshowTouchStartY = e.touches[0].clientY
+    this.slideshowTouchStartTime = Date.now()
+    this.resetSlideshowGestureState()
+  }
+
+  handleSlideshowTouchMove = (e: any) => {
+    e.stopPropagation?.()
+    if (this.isSlideshowAnimating) return
+    if (this.isSlideshowHorizontalDrag === false) return
+
+    const currentX = e.touches[0].clientX
+    const currentY = e.touches[0].clientY
+    const deltaX = currentX - this.slideshowTouchStartX
+    const deltaY = currentY - this.slideshowTouchStartY
+
+    if (this.isSlideshowHorizontalDrag === null) {
+      if (Math.abs(deltaX) > DRAG_LOCK_THRESHOLD || Math.abs(deltaY) > DRAG_LOCK_THRESHOLD) {
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          this.isSlideshowHorizontalDrag = true
+          this.clearSlideshowTimers()
+          e.preventDefault?.()
+        } else {
+          this.isSlideshowHorizontalDrag = false
+          return
+        }
+      } else {
+        return
+      }
+    }
+
+    const { slideshowPage, slideshowWordIndex } = this.state
+    const isForward = deltaX < 0
+    const hasNeighbor = this.getSlideshowNeighbor(slideshowPage, slideshowWordIndex, isForward) !== null
+    const adjustedDeltaX = hasNeighbor ? deltaX : deltaX * DRAG_BOUNDARY_DAMPING
+
+    this.isSlideshowDragging = true
+    this.slideshowDragX = adjustedDeltaX
+
+    e.preventDefault?.()
+    this.setState({ slideshowCardStyle: this.getCardTransformStyle(adjustedDeltaX) })
+  }
+
+  handleSlideshowTouchEnd = (e: any) => {
+    e.stopPropagation?.()
+    if (this.isSlideshowAnimating) return
+
+    const { slideshowPage, slideshowWordIndex } = this.state
+
+    if (!this.isSlideshowDragging) {
+      if (this.isSlideshowHorizontalDrag === false) {
+        this.resetSlideshowGestureState()
+        return
+      }
+
+      const touchEndX = e.changedTouches[0].clientX
+      const deltaX = touchEndX - this.slideshowTouchStartX
+      const deltaY = (e.changedTouches[0].clientY || 0) - this.slideshowTouchStartY
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        const isForward = deltaX < 0
+        const neighbor = this.getSlideshowNeighbor(slideshowPage, slideshowWordIndex, isForward)
+        if (neighbor) {
+          this.commitSlideshowChange(neighbor, isForward, deltaX)
+        } else {
+          this.snapSlideshowBack()
+        }
+      }
+
+      this.resetSlideshowGestureState()
+      return
+    }
+
+    const dragX = this.slideshowDragX
+    const isForward = dragX < 0
+    const neighbor = this.getSlideshowNeighbor(slideshowPage, slideshowWordIndex, isForward)
+    const elapsed = Date.now() - this.slideshowTouchStartTime
+    const velocity = Math.abs(dragX) / Math.max(elapsed, 1)
+    const shouldCommit = neighbor !== null && (
+      Math.abs(dragX) > DRAG_COMMIT_DISTANCE || velocity > DRAG_COMMIT_VELOCITY
+    )
+
+    if (shouldCommit && neighbor) {
+      this.commitSlideshowChange(neighbor, isForward, dragX)
+    } else {
+      this.snapSlideshowBack()
+    }
+
+    this.resetSlideshowGestureState()
+  }
+
+  handleSlideshowTouchCancel = (e: any) => {
+    e.stopPropagation?.()
+
+    if (this.isSlideshowDragging) {
+      this.snapSlideshowBack()
+    }
+
+    this.resetSlideshowGestureState()
+  }
+
+  snapSlideshowBack = () => {
+    this.clearSlideshowTimers()
+    this.setState({ slideshowCardStyle: this.getCardTransformStyle(0, SNAP_BACK_DURATION) })
+
+    const timer = setTimeout(() => {
+      this.setState({ slideshowCardStyle: "" })
+    }, SNAP_BACK_DURATION)
+    this.slideshowTimers.push(timer)
+  }
+
+  commitSlideshowChange = (
+    nextPosition: { pageIndex: number; wordIndex: number },
+    isForward: boolean,
+    currentOffset: number,
+  ) => {
+    this.isSlideshowAnimating = true
+    this.clearSlideshowTimers()
+
+    const slideshowSequence = this.slideshowSequence + 1
+    this.slideshowSequence = slideshowSequence
+    const slideDistance = this.getSlideDistance()
+    const exitTarget = isForward
+      ? Math.min(-slideDistance, currentOffset - 40)
+      : Math.max(slideDistance, currentOffset + 40)
+    const remainingDistance = Math.abs(exitTarget - currentOffset)
+    const exitDuration = Math.max(80, Math.min(SLIDE_OUT_DURATION, remainingDistance * 1.2))
+
+    this.setState({ slideshowCardStyle: this.getCardTransformStyle(exitTarget, exitDuration, 0) })
+
+    const switchTimer = setTimeout(() => {
+      if (this.slideshowSequence !== slideshowSequence) return
+
+      const enterOffset = isForward ? slideDistance : -slideDistance
+      this.setState({
+        slideshowPage: nextPosition.pageIndex,
+        slideshowWordIndex: nextPosition.wordIndex,
+        slideshowCardStyle: this.getCardTransformStyle(enterOffset, 0, 0),
+      }, () => {
+        const enterTimer = setTimeout(() => {
+          if (this.slideshowSequence !== slideshowSequence) return
+
+          this.setState({ slideshowCardStyle: this.getCardTransformStyle(0, SLIDE_IN_DURATION, 1) })
+
+          const doneTimer = setTimeout(() => {
+            if (this.slideshowSequence !== slideshowSequence) return
+
+            this.setState({ slideshowCardStyle: "" })
+            this.resetSlideshowGestureState()
+            this.isSlideshowAnimating = false
+          }, SLIDE_IN_DURATION)
+          this.slideshowTimers.push(doneTimer)
+        }, SLIDE_RESET_DELAY)
+        this.slideshowTimers.push(enterTimer)
+      })
+    }, exitDuration)
+    this.slideshowTimers.push(switchTimer)
   }
 
   // ============ Emoji Picker Methods ============
@@ -941,10 +1272,109 @@ export default class Index extends Component<{}, PageState> {
     return cat.emojis
   }
 
-  renderCardContent = (pageIndex: number, paneKey: string) => {
-    const { activeElement, customWords, selectedExtraWords, cardStyle } = this.state
+  renderWordCard = (pageIndex: number, item: SlideshowWord, wordIndex: number) => {
+    const { activeElement } = this.state
     const pageData = letterData[pageIndex]
-    const pageCustomWords = customWords[pageData.letter] || []
+    const sourceClass = item.source === "default" ? "" : item.source
+    const cardClassName = [
+      "word-card",
+      sourceClass,
+      activeElement === item.key ? "active" : "",
+    ].filter(Boolean).join(" ")
+    const handleLongPress = item.source === "custom"
+      ? () => this.deleteWord(pageData.letter, item.sourceIndex)
+      : item.source === "extra"
+        ? () => this.toggleExtraWord(item.word)
+        : undefined
+
+    return (
+      <View
+        key={item.key}
+        className={cardClassName}
+        onClick={() => this.playAudio(item.word, item.key)}
+        onLongPress={handleLongPress}
+      >
+        <View
+          className="word-slideshow-entry"
+          hoverClass="word-slideshow-entry-hover"
+          onClick={(e) => this.openSlideshow(pageIndex, wordIndex, e)}
+          onLongPress={(e) => e.stopPropagation?.()}
+        >
+          <Text className="word-slideshow-entry-icon">⛶</Text>
+        </View>
+        {this.renderWordVisual(item, "word-icon-img", "word-emoji")}
+        <Text className="word-text">{item.word}</Text>
+        <Text className="word-phonetic">{item.phonetic || ""}</Text>
+      </View>
+    )
+  }
+
+  renderSlideshow = () => {
+    const {
+      showSlideshow, slideshowPage, slideshowWordIndex,
+      slideshowCardStyle, activeElement,
+    } = this.state
+
+    if (!showSlideshow) return null
+
+    const pageData = letterData[slideshowPage]
+    const pageWords = this.getPageSlideshowWords(slideshowPage)
+    const item = pageWords[slideshowWordIndex]
+
+    if (!pageData || !item) return null
+
+    const activeId = `slideshow-${slideshowPage}-${item.key}`
+    const hasPrevious = this.getSlideshowNeighbor(slideshowPage, slideshowWordIndex, false) !== null
+    const hasNext = this.getSlideshowNeighbor(slideshowPage, slideshowWordIndex, true) !== null
+
+    return (
+      <View
+        className="slideshow-overlay"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={this.handleSlideshowTouchStart}
+        onTouchMove={this.handleSlideshowTouchMove}
+        onTouchEnd={this.handleSlideshowTouchEnd}
+        onTouchCancel={this.handleSlideshowTouchCancel}
+      >
+        <View className="slideshow-topbar">
+          <View className="slideshow-position">
+            <Text className="slideshow-letter">{pageData.letter}</Text>
+            <Text className="slideshow-count">{slideshowWordIndex + 1}/{pageWords.length}</Text>
+          </View>
+          <View className="slideshow-close" hoverClass="slideshow-close-hover" onClick={this.closeSlideshow}>
+            <Text className="slideshow-close-icon">✕</Text>
+          </View>
+        </View>
+
+        <View className="slideshow-stage">
+          <View
+            className={[
+              "slideshow-card",
+              activeElement === activeId ? "active" : "",
+              hasPrevious ? "" : "at-start",
+              hasNext ? "" : "at-end",
+            ].filter(Boolean).join(" ")}
+            hoverClass="slideshow-card-hover"
+            style={slideshowCardStyle}
+            onClick={() => this.playAudio(item.word, activeId)}
+          >
+            <View className="slideshow-visual">
+              {this.renderWordVisual(item, "slideshow-word-icon-img", "slideshow-word-emoji")}
+            </View>
+            <Text className="slideshow-word-text">{item.word}</Text>
+            {!!item.phonetic && (
+              <Text className="slideshow-word-phonetic">{item.phonetic}</Text>
+            )}
+          </View>
+        </View>
+      </View>
+    )
+  }
+
+  renderCardContent = (pageIndex: number, paneKey: string) => {
+    const { activeElement, cardStyle } = this.state
+    const pageData = letterData[pageIndex]
+    const pageWords = this.getPageSlideshowWords(pageIndex)
 
     return (
       <View
@@ -974,54 +1404,7 @@ export default class Index extends Component<{}, PageState> {
           onTouchCancel={this.handleTouchCancel}
         >
           <View className="words-grid" style={cardStyle}>
-            {pageData.words.map((item, index) => (
-              <View
-                key={index}
-                className={`word-card ${activeElement === `word-${index}` ? "active" : ""}`}
-                onClick={() => this.playAudio(item.word, `word-${index}`)}
-              >
-                <Text className="word-emoji">{item.emoji}</Text>
-                <Text className="word-text">{item.word}</Text>
-                <Text className="word-phonetic">{item.phonetic}</Text>
-              </View>
-            ))}
-
-            {pageCustomWords.map((item, index) => (
-              <View
-                key={`custom-${index}`}
-                className={`word-card custom ${activeElement === `custom-${index}` ? "active" : ""}`}
-                onClick={() => this.playAudio(item.word, `custom-${index}`)}
-                onLongPress={() => this.deleteWord(pageData.letter, index)}
-              >
-                {item.image ? (
-                  item.image.startsWith('emoji:') ? (
-                    <Text className="word-emoji">{item.image.replace('emoji:', '')}</Text>
-                  ) : (
-                    <Image className="word-icon-img" src={item.image} mode="aspectFill" />
-                  )
-                ) : (
-                  <Text className="word-emoji">✨</Text>
-                )}
-                <Text className="word-text">{item.word}</Text>
-                <Text className="word-phonetic">{item.phonetic || ""}</Text>
-              </View>
-            ))}
-
-            {(selectedExtraWords[pageData.letter] || []).map((wordText, index) => {
-              const wordData = this.findWordData(wordText, pageIndex)
-              return (
-                <View
-                  key={`extra-${index}`}
-                  className={`word-card extra ${activeElement === `extra-${index}` ? "active" : ""}`}
-                  onClick={() => this.playAudio(wordText, `extra-${index}`)}
-                  onLongPress={() => this.toggleExtraWord(wordText)}
-                >
-                  <Text className="word-emoji">{wordData.icon || "📝"}</Text>
-                  <Text className="word-text">{wordText}</Text>
-                  <Text className="word-phonetic">{wordData.phonetic || ""}</Text>
-                </View>
-              )
-            })}
+            {pageWords.map((item, index) => this.renderWordCard(pageIndex, item, index))}
           </View>
         </ScrollView>
       </View>
@@ -1097,6 +1480,8 @@ export default class Index extends Component<{}, PageState> {
 
           <Text className="hint-text">{hasCustomWords ? "左右滑动切换 · 长按删除" : "左右滑动切换 · 点击发音"}</Text>
         </View>
+
+        {this.renderSlideshow()}
 
         {/* ============ Add Modal ============ */}
         {showAddModal && (

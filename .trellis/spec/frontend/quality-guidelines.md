@@ -124,6 +124,27 @@ element inside it.
 Pseudo-elements such as `::after` are not a reliable substitute for the real
 component's response area in mini program audits.
 
+### Nested Controls Inside Long-Press Cards
+
+When a card already uses `onLongPress` for destructive or selection-changing
+behavior, any nested control inside that card must stop its own long-press
+event propagation. This prevents a deliberate tap target, such as a fullscreen
+entry button, from accidentally triggering the parent card's delete/deselect
+handler when the press is held slightly too long.
+
+```tsx
+<View className="word-card" onLongPress={this.deleteWord}>
+  <View
+    className="word-slideshow-entry"
+    hoverClass="word-slideshow-entry-hover"
+    onClick={this.openSlideshow}
+    onLongPress={(e) => e.stopPropagation?.()}
+  >
+    <Text className="word-slideshow-entry-icon">Fullscreen</Text>
+  </View>
+</View>
+```
+
 ---
 
 ## Common Mistakes
